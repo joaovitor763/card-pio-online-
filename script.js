@@ -29,7 +29,10 @@ function saveData() {
 // Renderiza o cardápio
 function renderMenu() {
   const list = document.getElementById("menuList");
-  const search = document.getElementById("searchInput").value.toLowerCase();
+  const searchInput = document.getElementById("searchInput");
+  if (!list) return;
+
+  const search = searchInput ? searchInput.value.toLowerCase() : "";
 
   const filtered = products.filter(p => {
     const matchCat = currentCategory === "Todos" || p.category === currentCategory;
@@ -73,7 +76,6 @@ function openItemModal(id) {
   document.getElementById("modalQty").innerText = modalQty;
   document.getElementById("itemObs").value = "";
 
-  // Mostra adicionais apenas para Lanches e Combos
   const showAddons = ["Lanches", "Combos"].includes(selectedProduct.category);
   document.getElementById("addonsContainer").classList.toggle("hidden", !showAddons);
   document.querySelectorAll("#addonsContainer input").forEach(cb => cb.checked = false);
@@ -126,6 +128,8 @@ function confirmAddToCart() {
 // Carrinho
 function updateCartBar() {
   const bar = document.getElementById("cartBar");
+  if (!bar) return;
+
   const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
   const totalVal = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
 
@@ -290,5 +294,7 @@ function closeModal(id) {
 }
 
 // Inicialização
-renderMenu();
-updateCartBar();
+document.addEventListener("DOMContentLoaded", () => {
+  renderMenu();
+  updateCartBar();
+});
