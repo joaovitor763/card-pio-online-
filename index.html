@@ -17,7 +17,7 @@
         <p class="status"><span class="dot"></span> Aberto • Entrega 30–45 min</p>
       </div>
     </div>
-    <button class="btn-admin-toggle" onclick="toggleAdmin()">⚙️ Gerenciar</button>
+    <button class="btn-admin-toggle" onclick="openAdmin()">⚙️ Gerenciar</button>
   </header>
 
   <section class="controls">
@@ -122,31 +122,58 @@
     </div>
   </div>
 
+  <!-- Modal Administrativo (Login com Senha + Cadastro com Imagem) -->
   <div class="modal-overlay hidden" id="adminModal">
     <div class="modal-box">
       <div class="modal-header">
-        <h2>Gerenciar Cardápio</h2>
-        <button class="close-btn" onclick="toggleAdmin()">✕</button>
+        <h2>Painel do Proprietário</h2>
+        <button class="close-btn" onclick="closeModal('adminModal')">✕</button>
       </div>
 
-      <form id="adminForm" onsubmit="addNewProduct(event)" class="admin-form">
-        <input type="text" id="prodName" placeholder="Nome do item" required />
-        <input type="text" id="prodDesc" placeholder="Descrição / ingredientes" required />
-        <div class="row-2">
-          <select id="prodCat">
-            <option value="Lanches">Lanches</option>
-            <option value="Combos">Combos</option>
-            <option value="Porções">Porções</option>
-            <option value="Bebidas">Bebidas</option>
-          </select>
-          <input type="number" step="0.01" id="prodPrice" placeholder="Preço (Ex: 24.90)" required />
-        </div>
-        <input type="text" id="prodEmoji" placeholder="Emoji (Ex: 🍔, 🍟, 🥤)" maxlength="4" />
-        <button type="submit" class="btn-primary">+ Cadastrar Item</button>
-      </form>
+      <!-- Tela de Senha -->
+      <div id="adminLoginBox" class="admin-login-box">
+        <p class="modal-desc">Área restrita ao responsável pela loja.</p>
+        <form onsubmit="verifyAdminPassword(event)" class="admin-form">
+          <input type="password" id="adminPasswordInput" placeholder="Digite a senha" required />
+          <button type="submit" class="btn-primary">Entrar</button>
+        </form>
+      </div>
 
-      <h4 style="margin: 14px 0 8px;">Itens Cadastrados</h4>
-      <div id="adminProductList" class="admin-list"></div>
+      <!-- Conteúdo Liberado Após Senha -->
+      <div id="adminPanelContent" class="hidden">
+        <div class="admin-topbar-actions">
+          <span class="admin-badge">🔓 Acesso liberado</span>
+          <button type="button" class="btn-lock" onclick="lockAdmin()">Bloquear</button>
+        </div>
+
+        <form id="adminForm" onsubmit="addNewProduct(event)" class="admin-form">
+          <input type="text" id="prodName" placeholder="Nome do item" required />
+          <input type="text" id="prodDesc" placeholder="Descrição / ingredientes" required />
+          <div class="row-2">
+            <select id="prodCat">
+              <option value="Lanches">Lanches</option>
+              <option value="Combos">Combos</option>
+              <option value="Porções">Porções</option>
+              <option value="Bebidas">Bebidas</option>
+            </select>
+            <input type="number" step="0.01" id="prodPrice" placeholder="Preço (Ex: 24.90)" required />
+          </div>
+
+          <label class="obs-label">Imagem do produto (arquivo ou link):</label>
+          <input type="file" id="prodImageFile" accept="image/*" onchange="handleImageFile(event)" />
+          <input type="url" id="prodImageUrl" placeholder="Ou cole o link da imagem (https://...)" oninput="handleImageUrl(event)" />
+
+          <div id="imagePreviewBox" class="image-preview-box hidden">
+            <img id="prodImagePreview" src="" alt="Prévia do produto" />
+            <button type="button" class="remove-item" onclick="clearProductImage()">Remover imagem</button>
+          </div>
+
+          <button type="submit" class="btn-primary">+ Cadastrar Item</button>
+        </form>
+
+        <h4 style="margin: 14px 0 8px;">Itens Cadastrados</h4>
+        <div id="adminProductList" class="admin-list"></div>
+      </div>
     </div>
   </div>
 
