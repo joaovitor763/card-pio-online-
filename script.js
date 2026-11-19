@@ -1,14 +1,15 @@
-// CONFIGURAÇÃO DO ESTABELECIMENTO (Altera para o número do cliente)
+// CONFIGURAÇÃO DO ESTABELECIMENTO
 const WHATSAPP_NUMBER = "5532999999999"; // DDI + DDD + Número
 const DELIVERY_FEE = 5.00;
+const ADMIN_PASSWORD = "1234"; // Altera para a senha do dono da loja
 
 // Produtos iniciais de demonstração
 const defaultProducts = [
-  { id: 1, name: "Brava Clássico", desc: "Pão brioche, blend 160g, queijo prato, alface, tomate e maionese da casa.", price: 24.90, category: "Lanches", emoji: "🍔", available: true },
-  { id: 2, name: "Cheddar Bacon Melt", desc: "Blend 160g, cheddar cremoso, bacon crocante e cebola caramelizada.", price: 29.90, category: "Lanches", emoji: "🥓", available: true },
-  { id: 3, name: "Combo Duplo + Refri", desc: "2 Smash burgers 120g + batata média + refrigerante lata.", price: 39.90, category: "Combos", emoji: "🍟", available: true },
-  { id: 4, name: "Batata Rústica Suprema", desc: "Porção 400g com cheddar cremoso, bacon picado e páprica.", price: 22.00, category: "Porções", emoji: "🥔", available: true },
-  { id: 5, name: "Refrigerante Lata 350ml", desc: "Coca-Cola, Guaraná Antarctica ou Sprite (gelado).", price: 6.00, category: "Bebidas", emoji: "🥤", available: true }
+  { id: 1, name: "Brava Clássico", desc: "Pão brioche, blend 160g, queijo prato, alface, tomate e maionese da casa.", price: 24.90, category: "Lanches", image: "", emoji: "🍔", available: true },
+  { id: 2, name: "Cheddar Bacon Melt", desc: "Blend 160g, cheddar cremoso, bacon crocante e cebola caramelizada.", price: 29.90, category: "Lanches", image: "", emoji: "🥓", available: true },
+  { id: 3, name: "Combo Duplo + Refri", desc: "2 Smash burgers 120g + batata média + refrigerante lata.", price: 39.90, category: "Combos", image: "", emoji: "🍟", available: true },
+  { id: 4, name: "Batata Rústica Suprema", desc: "Porção 400g com cheddar cremoso, bacon picado e páprica.", price: 22.00, category: "Porções", image: "", emoji: "🥔", available: true },
+  { id: 5, name: "Refrigerante Lata 350ml", desc: "Coca-Cola, Guaraná Antarctica ou Sprite (gelado).", price: 6.00, category: "Bebidas", image: "", emoji: "🥤", available: true }
 ];
 
 let products = JSON.parse(localStorage.getItem("menu_products")) || defaultProducts;
@@ -16,14 +17,29 @@ let cart = JSON.parse(localStorage.getItem("menu_cart")) || [];
 let currentCategory = "Todos";
 let selectedProduct = null;
 let modalQty = 1;
+let isAdminAuthenticated = false;
+let currentProductImage = "";
 
 function formatBRL(value) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function saveData() {
-  localStorage.setItem("menu_products", JSON.stringify(products));
-  localStorage.setItem("menu_cart", JSON.stringify(cart));
+  try {
+    localStorage.setItem("menu_products", JSON.stringify(products));
+    localStorage.setItem("menu_cart", JSON.stringify(cart));
+    return true;
+  } catch (err) {
+    alert("Limite de armazenamento do navegador atingido. Tente usar uma imagem menor ou um link de imagem.");
+    return false;
+  }
+}
+
+function renderThumb(item) {
+  if (item.image) {
+    return `<img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span style="display:none;width:100%;height:100%;place-items:center;">${item.emoji || "🍽️"}</span>`;
+  }
+  return item.emoji || "🍽️";
 }
 
 // Renderiza o cardápio
@@ -52,7 +68,7 @@ function renderMenu() {
         <p>${item.desc}</p>
         <span class="item-price">${formatBRL(item.price)}</span>
       </div>
-      <div class="item-thumb">${item.emoji || "🍽️"}</div>
+      <div class="item-thumb">${renderThumb(item)}</div>
     </div>
   `).join("");
 }
@@ -150,7 +166,7 @@ function openCart() {
 function renderCartItems() {
   const container = document.getElementById("cartItemsList");
   if (cart.length === 0) {
-    container.innerHTML = `<p style="color:#a1a1aa;padding:12px 0;">A tua sacola está vazia.</p>`;
+    container.innerHTML = `<p style="color:#a1a1aa;padding:12px 0;">A sacola está vazia.</p>`;
   } else {
     container.innerHTML = cart.map((item, idx) => `
       <div class="cart-item-row">
@@ -196,7 +212,7 @@ function toggleChangeField() {
 
 // Envio formatado para WhatsApp
 function sendWhatsAppOrder() {
-  if (cart.length === 0) return alert("Adiciona itens antes de finalizar!");
+  if (cart.length === 0) return alert("Adicione itens antes de finalizar!");
 
   const name = document.getElementById("custName").value.trim();
   const type = document.getElementById("deliveryType").value;
@@ -204,8 +220,8 @@ function sendWhatsAppOrder() {
   const payment = document.getElementById("paymentMethod").value;
   const change = document.getElementById("cashChange").value.trim();
 
-  if (!name) return alert("Por favor, informa o teu nome.");
-  if (type === "Entrega" && !address) return alert("Informa a morada/endereço de entrega.");
+  if (!name) return alert("Por favor, informe o nome.");
+  if (type === "Entrega" && !address) return alert("Informe o endereço de entrega.");
 
   const sub = cart.reduce((sum, i) => sum + (i.unitPrice * i.qty), 0);
   const fee = type === "Entrega" ? DELIVERY_FEE : 0;
@@ -232,32 +248,119 @@ function sendWhatsAppOrder() {
   window.open(url, "_blank");
 }
 
-// Painel Admin
-function toggleAdmin() {
-  const modal = document.getElementById("adminModal");
-  modal.classList.toggle("hidden");
-  renderAdminList();
+// Painel Admin com Senha
+function openAdmin() {
+  document.getElementById("adminModal").classList.remove("hidden");
+  syncAdminView();
+}
+
+function syncAdminView() {
+  const loginBox = document.getElementById("adminLoginBox");
+  const panelBox = document.getElementById("adminPanelContent");
+  const passInput = document.getElementById("adminPasswordInput");
+
+  if (isAdminAuthenticated) {
+    loginBox.classList.add("hidden");
+    panelBox.classList.remove("hidden");
+    renderAdminList();
+  } else {
+    loginBox.classList.remove("hidden");
+    panelBox.classList.add("hidden");
+    if (passInput) passInput.value = "";
+  }
+}
+
+function verifyAdminPassword(e) {
+  e.preventDefault();
+  const input = document.getElementById("adminPasswordInput");
+  if (input.value === ADMIN_PASSWORD) {
+    isAdminAuthenticated = true;
+    input.value = "";
+    syncAdminView();
+  } else {
+    alert("Senha incorreta.");
+    input.value = "";
+    input.focus();
+  }
+}
+
+function lockAdmin() {
+  isAdminAuthenticated = false;
+  syncAdminView();
+}
+
+// Upload / Link de Imagem
+function updateImagePreview(src) {
+  const box = document.getElementById("imagePreviewBox");
+  const img = document.getElementById("prodImagePreview");
+  if (src) {
+    currentProductImage = src;
+    img.src = src;
+    box.classList.remove("hidden");
+  } else {
+    currentProductImage = "";
+    img.src = "";
+    box.classList.add("hidden");
+  }
+}
+
+function handleImageFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById("prodImageUrl").value = "";
+    updateImagePreview(ev.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleImageUrl(e) {
+  const url = e.target.value.trim();
+  if (url) {
+    document.getElementById("prodImageFile").value = "";
+    updateImagePreview(url);
+  } else if (!document.getElementById("prodImageFile").files.length) {
+    updateImagePreview("");
+  }
+}
+
+function clearProductImage() {
+  document.getElementById("prodImageFile").value = "";
+  document.getElementById("prodImageUrl").value = "";
+  updateImagePreview("");
 }
 
 function addNewProduct(e) {
   e.preventDefault();
+  if (!isAdminAuthenticated) return;
+
   const newProd = {
     id: Date.now(),
     name: document.getElementById("prodName").value.trim(),
     desc: document.getElementById("prodDesc").value.trim(),
     category: document.getElementById("prodCat").value,
     price: parseFloat(document.getElementById("prodPrice").value),
-    emoji: document.getElementById("prodEmoji").value.trim() || "🍔",
+    image: currentProductImage,
+    emoji: "🍔",
     available: true
   };
+
   products.push(newProd);
-  saveData();
+  if (!saveData()) {
+    products.pop();
+    return;
+  }
+
   renderMenu();
   renderAdminList();
   e.target.reset();
+  clearProductImage();
 }
 
 function toggleAvailability(id) {
+  if (!isAdminAuthenticated) return;
   const item = products.find(p => p.id === id);
   if (item) {
     item.available = !item.available;
@@ -268,6 +371,7 @@ function toggleAvailability(id) {
 }
 
 function deleteProduct(id) {
+  if (!isAdminAuthenticated) return;
   products = products.filter(p => p.id !== id);
   saveData();
   renderMenu();
@@ -278,7 +382,10 @@ function renderAdminList() {
   const list = document.getElementById("adminProductList");
   list.innerHTML = products.map(p => `
     <div class="admin-row">
-      <span>${p.emoji} <strong>${p.name}</strong> (${formatBRL(p.price)})</span>
+      <div class="admin-item-left">
+        ${p.image ? `<img src="${p.image}" alt="${p.name}" class="admin-thumb-mini" />` : `<span>${p.emoji || "🍽️"}</span>`}
+        <span><strong>${p.name}</strong> (${formatBRL(p.price)})</span>
+      </div>
       <div>
         <button onclick="toggleAvailability(${p.id})" style="margin-right:6px;padding:3px 6px;cursor:pointer;">
           ${p.available ? "Pausar" : "Ativar"}
