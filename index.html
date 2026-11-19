@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Brava Burger | Cardápio Digital</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="./style.css" />
   <meta name="theme-color" content="#f59e0b" />
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
 </head>
 <body>
   <header class="topbar">
@@ -122,7 +122,6 @@
     </div>
   </div>
 
-  <!-- Modal Administrativo (Login com Senha + Cadastro com Imagem) -->
   <div class="modal-overlay hidden" id="adminModal">
     <div class="modal-box">
       <div class="modal-header">
@@ -130,7 +129,6 @@
         <button class="close-btn" onclick="closeModal('adminModal')">✕</button>
       </div>
 
-      <!-- Tela de Senha -->
       <div id="adminLoginBox" class="admin-login-box">
         <p class="modal-desc">Área restrita ao responsável pela loja.</p>
         <form onsubmit="verifyAdminPassword(event)" class="admin-form">
@@ -139,7 +137,6 @@
         </form>
       </div>
 
-      <!-- Conteúdo Liberado Após Senha -->
       <div id="adminPanelContent" class="hidden">
         <div class="admin-topbar-actions">
           <span class="admin-badge">🔓 Acesso liberado</span>
@@ -177,15 +174,219 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js").catch((err) => {
-          console.log("Falha ao registrar SW:", err);
-        });
-      });
+    const WHATSAPP_NUMBER = "5532999999999";
+    const DELIVERY_FEE = 5.00;
+    const ADMIN_PASSWORD = "1234";
+
+    let products = [
+      { id: 1, name: "Brava Clássico", desc: "Pão brioche, blend 160g, queijo prato, alface, tomate e maionese da casa.", price: 24.90, category: "Lanches", image: "", emoji: "🍔", available: true },
+      { id: 2, name: "Cheddar Bacon Melt", desc: "Blend 160g, cheddar cremoso, bacon crocante e cebola caramelizada.", price: 29.90, category: "Lanches", image: "", emoji: "🥓", available: true },
+      { id: 3, name: "Combo Duplo + Refri", desc: "2 Smash burgers 120g + batata média + refrigerante lata.", price: 39.90, category: "Combos", image: "", emoji: "🍟", available: true },
+      { id: 4, name: "Batata Rústica Suprema", desc: "Porção 400g com cheddar cremoso, bacon picado e páprica.", price: 22.00, category: "Porções", image: "", emoji: "🥔", available: true },
+      { id: 5, name: "Refrigerante Lata 350ml", desc: "Coca-Cola, Guaraná Antarctica ou Sprite (gelado).", price: 6.00, category: "Bebidas", image: "", emoji: "🥤", available: true }
+    ];
+
+    let cart = [];
+    let currentCategory = "Todos";
+    let selectedProduct = null;
+    let modalQty = 1;
+    let isAdminAuthenticated = false;
+    let currentProductImage = "";
+
+    function formatBRL(value) {
+      return Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
-  </script>
-</body>
-</html>
+
+    function renderThumb(item) {
+      if (item.image) {
+        return `<img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span style="display:none;width:100%;height:100%;place-items:center;">${item.emoji || "🍽️"}</span>`;
+      }
+      return item.emoji || "🍽️";
+    }
+
+    function renderMenu() {
+      const list = document.getElementById("menuList");
+      const searchInput = document.getElementById("searchInput");
+      if (!list) return;
+
+      const search = searchInput ? searchInput.value.toLowerCase() : "";
+      const filtered = products.filter(p => {
+        const matchCat = currentCategory === "Todos" || p.category === currentCategory;
+        const matchText = p.name.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search);
+        return matchCat && matchText;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<p style="text-align:center;color:#a1a1aa;padding:30px;">Nenhum item encontrado.</p>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(item => `
+        <div class="menu-card ${item.available ? "" : "unavailable"}" onclick="openItemModal(${item.id})">
+          <div class="item-info">
+            <h3>${item.name}${item.available ? "" : "(Esgotado)"}</h3>
+            <p>${item.desc}</p>
+            <span class="item-price">${formatBRL(item.price)}</span>
+          </div>
+          <div class="item-thumb">${renderThumb(item)}</div>
+        </div>
+      `).join("");
+    }
+
+    function selectCategory(btn) {
+      document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentCategory = btn.dataset.cat;
+      renderMenu();
+    }
+
+    function openItemModal(id) {
+      selectedProduct = products.find(p => p.id === id);
+      if (!selectedProduct) return;
+
+      modalQty = 1;
+      document.getElementById("modalTitle").innerText = selectedProduct.name;
+      document.getElementById("modalDesc").innerText = selectedProduct.desc;
+      document.getElementById("modalBasePrice").innerText = formatBRL(selectedProduct.price);
+      document.getElementById("modalQty").innerText = modalQty;
+      document.getElementById("itemObs").value = "";
+
+      const showAddons = ["Lanches", "Combos"].includes(selectedProduct.category);
+      document.getElementById("addonsContainer").classList.toggle("hidden", !showAddons);
+      document.querySelectorAll("#addonsContainer input").forEach(cb => cb.checked = false);
+
+      updateModalPrice();
+      document.getElementById("itemModal").classList.remove("hidden");
+    }
+
+    function changeModalQty(delta) {
+      modalQty = Math.max(1, modalQty + delta);
+      document.getElementById("modalQty").innerText = modalQty;
+      updateModalPrice();
+    }
+
+    function updateModalPrice() {
+      let addonsTotal = 0;
+      document.querySelectorAll("#addonsContainer input:checked").forEach(cb => {
+        addonsTotal += parseFloat(cb.value);
+      });
+      const total = (selectedProduct.price + addonsTotal) * modalQty;
+      document.getElementById("modalFinalPrice").innerText = formatBRL(total);
+    }
+
+    function confirmAddToCart() {
+      const addons = [];
+      let addonsTotal = 0;
+
+      document.querySelectorAll("#addonsContainer input:checked").forEach(cb => {
+        addons.push(cb.dataset.name);
+        addonsTotal += parseFloat(cb.value);
+      });
+
+      const obs = document.getElementById("itemObs").value.trim();
+      const unitPrice = selectedProduct.price + addonsTotal;
+
+      cart.push({
+        cartId: Date.now(),
+        name: selectedProduct.name,
+        qty: modalQty,
+        unitPrice,
+        addons,
+        obs
+      });
+
+      updateCartBar();
+      closeModal("itemModal");
+    }
+
+    function updateCartBar() {
+      const bar = document.getElementById("cartBar");
+      if (!bar) return;
+
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+      const totalVal = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
+
+      if (totalQty === 0) {
+        bar.classList.add("hidden");
+      } else {
+        bar.classList.remove("hidden");
+        document.getElementById("cartCount").innerText = totalQty;
+        document.getElementById("cartTotalBar").innerText = formatBRL(totalVal);
+      }
+    }
+
+    function openCart() {
+      renderCartItems();
+      document.getElementById("cartModal").classList.remove("hidden");
+    }
+
+    function renderCartItems() {
+      const container = document.getElementById("cartItemsList");
+      if (cart.length === 0) {
+        container.innerHTML = `<p style="color:#a1a1aa;padding:12px 0;">A sacola está vazia.</p>`;
+      } else {
+        container.innerHTML = cart.map((item, idx) => `
+          <div class="cart-item-row">
+            <div>
+              <strong>${item.qty}x ${item.name}</strong>${item.addons.length ? `<div style="font-size:0.78rem;color:#a1a1aa;">+ ${item.addons.join(", ")}</div>` : ""}
+              ${item.obs ? `<div style="font-size:0.78rem;color:#f59e0b;">Obs: ${item.obs}</div>` : ""}
+            </div>
+            <div>
+              <span>${formatBRL(item.unitPrice * item.qty)}</span>
+              <button class="remove-item" onclick="removeCartItem(${idx})">Remover</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      const sub = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
+      const isDelivery = document.getElementById("deliveryType").value === "Entrega";
+      const fee = (isDelivery && sub > 0) ? DELIVERY_FEE : 0;
+
+      document.getElementById("subTotal").innerText = formatBRL(sub);
+      document.getElementById("deliveryFee").innerText = formatBRL(fee);
+      document.getElementById("grandTotal").innerText = formatBRL(sub + fee);
+    }
+
+    function removeCartItem(index) {
+      cart.splice(index, 1);
+      updateCartBar();
+      renderCartItems();
+    }
+
+    function toggleAddressField() {
+      const isDelivery = document.getElementById("deliveryType").value === "Entrega";
+      document.getElementById("custAddress").classList.toggle("hidden", !isDelivery);
+      renderCartItems();
+    }
+
+    function toggleChangeField() {
+      const isCash = document.getElementById("paymentMethod").value === "Dinheiro";
+      document.getElementById("cashChange").classList.toggle("hidden", !isCash);
+    }
+
+    function sendWhatsAppOrder() {
+      if (cart.length === 0) return alert("Adicione itens antes de finalizar!");
+
+      const name = document.getElementById("custName").value.trim();
+      const type = document.getElementById("deliveryType").value;
+      const address = document.getElementById("custAddress").value.trim();
+      const payment = document.getElementById("paymentMethod").value;
+      const change = document.getElementById("cashChange").value.trim();
+
+      if (!name) return alert("Por favor, informe o nome.");
+      if (type === "Entrega" && !address) return alert("Informe o endereço de entrega.");
+
+      const sub = cart.reduce((sum, i) => sum + (i.unitPrice * i.qty), 0);
+      const fee = type === "Entrega" ? DELIVERY_FEE : 0;
+      const total = sub + fee;
+
+      let msg = `*NOVO PEDIDO - CARDÁPIO ONLINE*\n\n`;
+      msg += `*Cliente:* ${name}\n`;
+      msg += `*Tipo:* ${type}\n`; if (type === "Entrega") msg += `*Endereço:* ${address}\n`;
+      msg += `*Pagamento:* ${payment}${payment === "Dinheiro" && change ? ` (Troco p/ ${change})` : ""}\n\n`;
+      msg += `*ITENS DO PEDIDO:*\n`;
+
+      cart.forEach(item => {
+        msg += `• ${item.qty}x${item.name} — ${formatBRL(item.unitPrice * item.qty)}\n`; if (item.addons.length) msg += `   _Adicionais: ${item.addons.join(", ")}_\n
