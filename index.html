@@ -9,7 +9,6 @@
   <link rel="manifest" href="manifest.json" />
 </head>
 <body>
-  <!-- Cabeçalho -->
   <header class="topbar">
     <div class="store-info">
       <div class="logo-circle">🍔</div>
@@ -21,7 +20,6 @@
     <button class="btn-admin-toggle" onclick="toggleAdmin()">⚙️ Gerenciar</button>
   </header>
 
-  <!-- Barra de Busca e Categorias -->
   <section class="controls">
     <input
       type="text"
@@ -38,17 +36,14 @@
     </div>
   </section>
 
-  <!-- Lista de Produtos -->
   <main class="menu-container" id="menuList"></main>
 
-  <!-- Barra Flutuante do Carrinho -->
   <div class="cart-bar hidden" id="cartBar" onclick="openCart()">
     <span class="cart-badge" id="cartCount">0</span>
     <span>Ver Sacola</span>
     <strong id="cartTotalBar">R$ 0,00</strong>
   </div>
 
-  <!-- Modal de Detalhes / Adicionais -->
   <div class="modal-overlay hidden" id="itemModal">
     <div class="modal-box">
       <div class="modal-header">
@@ -65,4 +60,105 @@
           <span>+ R$ 3,50</span>
         </label>
         <label class="addon-item">
-          <span><input type="checkbox" value="3.00" data-name
+          <span><input type="checkbox" value="3.00" data-name="Cheddar Cremoso" onchange="updateModalPrice()" /> Cheddar Cremoso</span>
+          <span>+ R$ 3,00</span>
+        </label>
+        <label class="addon-item">
+          <span><input type="checkbox" value="6.00" data-name="Hambúrguer Extra 160g" onchange="updateModalPrice()" /> Hambúrguer Extra 160g</span>
+          <span>+ R$ 6,00</span>
+        </label>
+      </div>
+
+      <label class="obs-label">Observações:</label>
+      <textarea id="itemObs" rows="2" placeholder="Ex: Tirar cebola, ponto da carne..."></textarea>
+
+      <div class="modal-footer">
+        <div class="qty-control">
+          <button onclick="changeModalQty(-1)">-</button>
+          <span id="modalQty">1</span>
+          <button onclick="changeModalQty(1)">+</button>
+        </div>
+        <button class="btn-primary" onclick="confirmAddToCart()">
+          Adicionar • <span id="modalFinalPrice">R$ 0,00</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="cartModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>Sua Sacola</h2>
+        <button class="close-btn" onclick="closeModal('cartModal')">✕</button>
+      </div>
+
+      <div id="cartItemsList" class="cart-items-list"></div>
+
+      <div class="checkout-form">
+        <h4>Dados para Entrega</h4>
+        <input type="text" id="custName" placeholder="Seu nome *" />
+        <select id="deliveryType" onchange="toggleAddressField()">
+          <option value="Entrega">Entrega (Motoboy)</option>
+          <option value="Retirada">Retirar no Balcão</option>
+        </select>
+        <input type="text" id="custAddress" placeholder="Rua, número e bairro *" />
+        <select id="paymentMethod" onchange="toggleChangeField()">
+          <option value="Pix">Pix</option>
+          <option value="Cartão na entrega">Cartão (Crédito/Débito)</option>
+          <option value="Dinheiro">Dinheiro</option>
+        </select>
+        <input type="text" id="cashChange" class="hidden" placeholder="Troco para quanto? (Ex: R$ 50)" />
+      </div>
+
+      <div class="cart-summary">
+        <div class="summary-row"><span>Subtotal</span><span id="subTotal">R$ 0,00</span></div>
+        <div class="summary-row"><span>Taxa de entrega</span><span id="deliveryFee">R$ 5,00</span></div>
+        <div class="summary-row total"><span>Total</span><span id="grandTotal">R$ 0,00</span></div>
+      </div>
+
+      <button class="btn-whatsapp" onclick="sendWhatsAppOrder()">
+        📲 Enviar Pedido no WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="adminModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>Gerenciar Cardápio</h2>
+        <button class="close-btn" onclick="toggleAdmin()">✕</button>
+      </div>
+
+      <form id="adminForm" onsubmit="addNewProduct(event)" class="admin-form">
+        <input type="text" id="prodName" placeholder="Nome do item" required />
+        <input type="text" id="prodDesc" placeholder="Descrição / ingredientes" required />
+        <div class="row-2">
+          <select id="prodCat">
+            <option value="Lanches">Lanches</option>
+            <option value="Combos">Combos</option>
+            <option value="Porções">Porções</option>
+            <option value="Bebidas">Bebidas</option>
+          </select>
+          <input type="number" step="0.01" id="prodPrice" placeholder="Preço (Ex: 24.90)" required />
+        </div>
+        <input type="text" id="prodEmoji" placeholder="Emoji (Ex: 🍔, 🍟, 🥤)" maxlength="4" />
+        <button type="submit" class="btn-primary">+ Cadastrar Item</button>
+      </form>
+
+      <h4 style="margin: 14px 0 8px;">Itens Cadastrados</h4>
+      <div id="adminProductList" class="admin-list"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch((err) => {
+          console.log("Falha ao registrar SW:", err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
